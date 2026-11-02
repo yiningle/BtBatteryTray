@@ -64,6 +64,9 @@ jobs:
             artifacts/release/*/*-Setup.exe
             artifacts/release/*/*-Portable.zip
           if-no-files-found: error
+          # ~380 MB per run counts against the Actions storage quota. Tag builds only hand files to the
+          # release job (the Release keeps them), so one day is enough there.
+          retention-days: ${{ github.ref_type == 'tag' && 1 || 7 }}
 
   release:
     if: github.ref_type == 'tag'
