@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>BtBatteryTray</RootNamespace>
+    <AssemblyName>BtBatteryTray</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x64;ARM64</Platforms>
+    <Platform Condition="'$(Platform)' == '' or '$(Platform)' == 'AnyCPU'">x64</Platform>
+    <RuntimeIdentifier Condition="'$(Platform)' == 'x64'">win-x64</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="'$(Platform)' == 'ARM64'">win-arm64</RuntimeIdentifier>
+    <UseWinUI>true</UseWinUI>
+    <!-- Unpackaged; ship the Windows App SDK runtime alongside the exe so no installer is needed. -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>false</SelfContained>
+    <!-- Custom Program.Main handles single-instance redirection. -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <!-- Release metadata. build\release.ps1 reads Version from here and stamps the installer with it. -->
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Product>BtBatteryTray</Product>
+    <Description>Bluetooth device battery levels in the tray</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="H.NotifyIcon.WinUI" Version="2.4.1" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.4" />
+    <PackageReference Include="Velopack" Version="1.2.161" />
+  </ItemGroup>
+
+  <!--
+    Self-contained mode adds the Windows App SDK runtime payload (DLLs plus ~86 language folders of .mui files)
+    as linked None items, which IDEs then list in the project tree. Keep copying them, but hide them.
+  -->
+  <Target Name="HideWindowsAppSDKPayloadInIde" AfterTargets="AddMicrosoftWindowsAppSDKPayloadFilesFromComponents">
+    <!-- Item Update isn't allowed inside targets, so filter by metadata: only linked files from the NuGet cache. -->
+    <ItemGroup>
+      <None Visible="false" Condition="'%(None.Link)' != '' and $([System.String]::Copy('%(None.FullPath)').StartsWith('$(NuGetPackageRoot)', System.StringComparison.OrdinalIgnoreCase))" />
+    </ItemGroup>
+  </Target>
+
+</Project>

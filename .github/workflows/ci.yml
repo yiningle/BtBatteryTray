@@ -1,0 +1,87 @@
+name: CI
+
+# Every push / PR: build and pack (Setup.exe + portable zip) for x64 and ARM64, kept as workflow artifacts.
+# Tag vX.Y.Z: same, then publish a GitHub Release with those files. The tag must match <Version> in the csproj.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'dotnet-tools.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $csproj = ([xml](Get-Content -Raw src/BtBatteryTray/BtBatteryTray.csproj)).Project.PropertyGroup.Version |
+              Where-Object { $_ } | Select-Object -First 1
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+              $version = $env:GITHUB_REF_NAME -replace '^v', ''
+              if ($version -ne $csproj) {
+                  throw "Tag $env:GITHUB_REF_NAME does not match <Version>$csproj</Version> in the csproj. Bump the csproj first."
+              }
+          } else {
+              # Prerelease suffix keeps CI builds sorting below the real release of the same version.
+              $version = "$csproj-ci.$env:GITHUB_RUN_NUMBER"
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "Version: $version"
+
+      - name: Build and pack
+        shell: pwsh
+        run: ./build/release.ps1 -Version '${{ steps.version.outputs.version }}' -Runtime win-x64, win-arm64
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: BtBatteryTray-${{ steps.version.outputs.version }}
+          path: |
+            artifacts/release/*/*-Setup.exe
+            artifacts/release/*/*-Portable.zip
+          if-no-files-found: error
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: BtBatteryTray-${{ needs.package.outputs.version }}
+          path: dist
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/*/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "蓝牙电量监控 $GITHUB_REF_NAME" \
+            --generate-notes

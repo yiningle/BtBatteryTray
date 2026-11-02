@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="BtBatteryTray.Views.TrayHoverCard"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:BtBatteryTray.Views"
+    xmlns:vm="using:BtBatteryTray.ViewModels">
+
+    <!-- A Canvas measures the card unconstrained, so Card.ActualHeight is its natural height; the window is then sized to it. -->
+    <Canvas Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+        <StackPanel
+            x:Name="Card"
+            Width="{x:Bind CardWidth}"
+            Padding="16,14,16,12"
+            Spacing="10">
+            <Grid>
+                <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="蓝牙设备电量" />
+                <TextBlock
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text="{x:Bind ViewModel.StatusText, Mode=OneWay}" />
+            </Grid>
+
+            <ItemsControl ItemsSource="{x:Bind ViewModel.Devices}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:TrayDeviceViewModel">
+                        <Grid Padding="0,6" ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="44" />
+                            </Grid.ColumnDefinitions>
+                            <FontIcon
+                                VerticalAlignment="Center"
+                                FontSize="20"
+                                Foreground="{x:Bind local:TrayHoverCard.LevelBrush(IsLow)}"
+                                Glyph="{x:Bind Glyph}" />
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6">
+                                <TextBlock Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
+                                <ProgressBar Maximum="100" ShowError="{x:Bind IsLow}" Value="{x:Bind Level}" />
+                            </StackPanel>
+                            <TextBlock
+                                Grid.Column="2"
+                                VerticalAlignment="Center"
+                                FontWeight="SemiBold"
+                                Foreground="{x:Bind local:TrayHoverCard.LevelBrush(IsLow)}"
+                                HorizontalTextAlignment="Right"
+                                Text="{x:Bind LevelText}" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="未检测到可读取电量的已连接设备"
+                TextWrapping="Wrap"
+                Visibility="{x:Bind ViewModel.HasNoDevices, Mode=OneWay}" />
+        </StackPanel>
+    </Canvas>
+</Window>
